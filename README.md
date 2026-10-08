@@ -119,15 +119,91 @@ generar los resultados principales.
 
 ## Como levantar el ambiente
 
-<!-- TODO (Ejercicio 1.5) -->
+Detalle, verificacion y herramientas disponibles: [`docs/ejercicio1_ambiente.md`](docs/ejercicio1_ambiente.md).
+
+1. Instale Docker Desktop (o Docker Engine con el plugin Compose) y asegurese de que
+   este **en ejecucion**. En Windows, si `docker info` falla con
+   `dockerDesktopLinuxEngine ... cannot find the file`, Docker Desktop no esta abierto.
+2. Clone su fork y entre a la carpeta:
+
+   ```bash
+   git clone https://github.com/<su-usuario>/<su-fork>.git
+   cd <su-fork>
+   ```
+
+3. Construya y levante los servicios en segundo plano (la primera vez tarda mas de
+   10 minutos):
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. Verifique que ambos servicios esten `Up`:
+
+   ```bash
+   docker compose ps
+   ```
+
+| Servicio | URL | Contenido |
+|---|---|---|
+| `lab` | <http://localhost:8888> | JupyterLab con Python 3.11, DuckDB 1.5.5, pandas, pyarrow y matplotlib (sin token) |
+| `metabase` | <http://localhost:3000> | Metabase v0.63.19 con el driver de DuckDB. Tarda 1-2 minutos en arrancar; `http://localhost:3000/api/health` debe responder `{"status":"ok"}` |
+
+Los comandos de Python se ejecutan **dentro** del contenedor `lab`, desde `/workspace`
+(la raiz del proyecto):
+
+```bash
+docker compose exec lab python -c "import duckdb; print(duckdb.__version__)"
+```
+
+Para detener el ambiente: `docker compose down` (los datos de `data/` y la configuracion
+de Metabase se conservan).
 
 ## Como descargar los datos
 
-<!-- TODO (Ejercicios 2.6, 5.1 y 8.1) -->
+Detalle de los cambios al script y de la verificacion: [`docs/ejercicio2_descarga.md`](docs/ejercicio2_descarga.md).
+
+```bash
+# Taxis amarillos y verdes de 2026 (todos los meses publicados)
+docker compose exec lab python scripts/download_data.py
+
+# Opciones
+docker compose exec lab python scripts/download_data.py --taxi yellow   # o green
+docker compose exec lab python scripts/download_data.py --anios 2026    # uno o varios anios
+docker compose exec lab python scripts/download_data.py --verificar     # revisar sin descargar
+```
+
+- Los archivos quedan en `data/raw/<tipo>/<anio>/<tipo>_tripdata_<anio>-<mes>.parquet`.
+- El script consulta al servidor de la TLC que meses estan publicados; los que aun no
+  existen se reportan como "no publicados" y no se cuentan como error.
+- Un archivo que ya existe **y esta completo** (mismo tamanio que en el servidor y firma
+  Parquet valida) no se vuelve a descargar. Un archivo truncado o corrupto se reemplaza.
+- Al terminar se escribe `data/raw/manifest.csv` con el estado de cada archivo. El script
+  devuelve codigo 1 si alguna descarga fallo.
 
 ## Como ejecutar el analisis
 
-<!-- TODO -->
+### Ejercicio 3 - Exploracion directa sobre Parquet
+
+Documentacion: [`docs/ejercicio3_exploracion.md`](docs/ejercicio3_exploracion.md).
+Consultas: [`sql/03_exploracion_parquet.sql`](sql/03_exploracion_parquet.sql).
+
+```bash
+# Ejecuta todas las consultas y guarda los resultados en Markdown
+docker compose exec lab python scripts/run_sql.py sql/03_exploracion_parquet.sql --salida docs/resultados/ejercicio3_resultados.md
+
+# Solo algunas consultas
+docker compose exec lab python scripts/run_sql.py sql/03_exploracion_parquet.sql --solo q01_cantidad_archivos q03_total_registros
+```
+
+Tambien se puede abrir `notebooks/03_exploracion_parquet.ipynb` en JupyterLab y ejecutar
+todas las celdas (tarda ~2.5 minutos), o ejecutarlo desde la terminal:
+
+```bash
+docker compose exec lab jupyter nbconvert --to notebook --execute --inplace notebooks/03_exploracion_parquet.ipynb
+```
+
+<!-- TODO: Ejercicios 4 en adelante -->
 
 ## Como reproducir los benchmarks
 
