@@ -147,7 +147,7 @@ Detalle, verificacion y herramientas disponibles: [`docs/ejercicio1_ambiente.md`
 | Servicio | URL | Contenido |
 |---|---|---|
 | `lab` | <http://localhost:8888> | JupyterLab con Python 3.11, DuckDB 1.5.5, pandas, pyarrow y matplotlib (sin token) |
-| `metabase` | <http://localhost:3000> | Metabase v0.63.19 con el driver de DuckDB. Tarda 1-2 minutos en arrancar; `http://localhost:3000/api/health` debe responder `{"status":"ok"}` |
+| `metabase` | <http://localhost:3001> | Metabase v0.63.19 con el driver de DuckDB. Tarda 1-2 minutos en arrancar; `http://localhost:3001/api/health` debe responder `{"status":"ok"}` |
 
 Los comandos de Python se ejecutan **dentro** del contenedor `lab`, desde `/workspace`
 (la raiz del proyecto):
@@ -164,7 +164,7 @@ de Metabase se conservan).
 Detalle de los cambios al script y de la verificacion: [`docs/ejercicio2_descarga.md`](docs/ejercicio2_descarga.md).
 
 ```bash
-# Taxis amarillos y verdes de 2026 (todos los meses publicados)
+# Taxis amarillos y verdes de 2024, 2025 y 2026 (todos los meses publicados)
 docker compose exec lab python scripts/download_data.py
 
 # Opciones
@@ -203,7 +203,35 @@ todas las celdas (tarda ~2.5 minutos), o ejecutarlo desde la terminal:
 docker compose exec lab jupyter nbconvert --to notebook --execute --inplace notebooks/03_exploracion_parquet.ipynb
 ```
 
-<!-- TODO: Ejercicios 4 en adelante -->
+<!-- TODO: Ejercicios 4 a 6 -->
+
+### Ejercicio 7 - Indicadores y tablero
+
+Consultas: [`sql/07_indicadores.sql`](sql/07_indicadores.sql). Notebook con las preguntas, los
+graficos y la interpretacion: `notebooks/07_indicadores.ipynb`.
+
+```bash
+# 1. Calcula los 10 indicadores sobre los Parquet y los guarda en data/processed/indicadores.duckdb (~1.5 min)
+docker compose exec lab python scripts/indicadores.py
+
+# 2. Crea (o reemplaza) el tablero en Metabase
+docker compose exec lab python scripts/tablero_metabase.py
+```
+
+El paso 2 configura Metabase si todavia no tiene usuario, con `admin@lab8.local` /
+`Lab8-DuckDB-2026` (se pueden cambiar con `--email` y `--password`), conecta la base de
+indicadores en modo solo lectura y crea el tablero "Taxis de Nueva York 2024-2026" en
+<http://localhost:3001>, con un filtro por tipo de taxi. Evidencia: `docs/tablero_metabase.png`.
+
+### Ejercicio 8 - Incorporacion de 2025
+
+`notebooks/08_incorporacion_2025.ipynb` vuelve a ejecutar la descarga (que ya incluye 2025),
+comprueba que las consultas anteriores siguen funcionando, reconstruye los indicadores y el
+tablero y analiza la evolucion de 2024 a 2026.
+
+### Ejercicio 9 - Discusion
+
+[`docs/ejercicio9_discusion.md`](docs/ejercicio9_discusion.md).
 
 ## Como reproducir los benchmarks
 
@@ -211,4 +239,15 @@ docker compose exec lab jupyter nbconvert --to notebook --execute --inplace note
 
 ## Como generar los resultados principales
 
-<!-- TODO -->
+Con el ambiente levantado, estos comandos reproducen desde cero los datos, los indicadores y
+el tablero de los Ejercicios 7 y 8:
+
+```bash
+docker compose exec lab python scripts/download_data.py
+docker compose exec lab python scripts/indicadores.py
+docker compose exec lab python scripts/tablero_metabase.py
+
+# Notebooks con el analisis completo
+docker compose exec lab jupyter nbconvert --to notebook --execute --inplace notebooks/07_indicadores.ipynb
+docker compose exec lab jupyter nbconvert --to notebook --execute --inplace notebooks/08_incorporacion_2025.ipynb
+```
